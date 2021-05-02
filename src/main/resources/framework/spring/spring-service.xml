@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx" xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:p="http://www.springframework.org/schema/p" xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xmlns:task="http://www.springframework.org/schema/task"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context-4.0.xsd
+        http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.0.xsd http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd http://www.springframework.org/schema/mvc https://www.springframework.org/schema/mvc/spring-mvc.xsd http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task.xsd">
+
+    <context:component-scan base-package="com.singleo.springboot.common"></context:component-scan>
+
+    <!-- 交换区 -->
+    <bean id="swapAreaManager" class="com.singleo.springboot.common.swaparea.SwapAreaManager">
+        <constructor-arg>
+            <bean class="com.singleo.springboot.common.swaparea.SwapAreaHolder"/>
+        </constructor-arg>
+    </bean>
+    <bean id="swapAreaUtils" class="com.singleo.springboot.common.swaparea.SwapAreaUtils"
+        p:manager-ref="swapAreaManager">
+<!--        <property name="manager" ref="swapAreaManager"/>-->
+    </bean>
+    <!-- 交换区 end -->
+
+    <!-- 注册全局拦截器 -->
+    <mvc:interceptors>
+        <mvc:interceptor>
+            <mvc:mapping path="/**"/>
+            <bean class="com.singleo.springboot.common.interceptor.GlobalRequestInterceptor"/>
+        </mvc:interceptor>
+        <mvc:interceptor>
+            <mvc:mapping path="/**"/>
+            <bean class="com.singleo.springboot.common.interceptor.LogConfigInterceptor">
+                <property name="logConfigHandler" ref="logConfigHandler"/>
+                <property name="initKeyList">
+                    <list>
+<!--                        <value>evtTraceId</value>-->
+                    </list>
+                </property>
+            </bean>
+        </mvc:interceptor>
+    </mvc:interceptors>
+    <!-- 注册全局拦截器 end-->
+
+    <!-- 定时刷新redis -->
+    <bean id="flushRedisCacheJob" class="com.singleo.springboot.common.job.FlushRedisCacheJob">
+        <property name="flushRedisKeyList">
+            <map>
+                <entry key="application-name" value="${spring.application.name}"/>
+            </map>
+        </property>
+    </bean>
+    <task:scheduled-tasks>
+        <task:scheduled ref="flushRedisCacheJob" method="scheduled" cron="0 0/5 * * * ?"/>
+    </task:scheduled-tasks>
+    <!-- 定时刷新redis end -->
+
+    <!-- 切面,对以Trace结尾的方法进行拦截，打印入参和出参 -->
+    <bean id="globalMethodAspect" class="com.singleo.springboot.common.aspect.GlobalMethodAspect"/>
+    <aop:config>
+        <aop:pointcut id="globalMethodPointcut" expression="execution(* com.singleo.springboot..*Trace(..))"/>
+        <aop:aspect id="globalMethodAspect" ref="globalMethodAspect">
+<!--            <aop:around method="aroundMethod" pointcut-ref="globalMethodPointcut"/>-->
+            <aop:after-throwing method="afterThrowMethod" throwing="throwable" pointcut-ref="globalMethodPointcut"/>
+            <aop:before method="beforeMethod" pointcut-ref="globalMethodPointcut"/>
+            <aop:after-returning returning="result" method="afterReturnMethod" pointcut-ref="globalMethodPointcut"/>
+        </aop:aspect>
+    </aop:config>
+    <aop:aspectj-autoproxy proxy-target-class="true"/>
+    <!-- 切面,对以Trace结尾的方法进行拦截，打印入参和出参 end-->
+</beans>
