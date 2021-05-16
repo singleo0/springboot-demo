@@ -9,5 +9,3 @@
 9.定时任务,读取xml默认key定时刷新redis
 10.logConfigHandler从交换区获取事件跟踪号evtTraceId,添加日志MDC
 11.多线程任务util,multiThreadTaskUtil,创建多线程任务代理类,将父线程MDC传递给子线程MDC
-999.多线程,将父线程交换区传递给子线程交换区
-999.自定义handler处理链demo
